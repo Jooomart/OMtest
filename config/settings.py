@@ -165,10 +165,10 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'toctogulovjoomart@gmail.com'
-EMAIL_HOST_PASSWORD = 'Paroly1234'
+EMAIL_HOST_PASSWORD = 'vbjtbpinylnxgigh'
 #
 #
-# BASE_URL = 'https://onemoment.cc/'
+BASE_URL = 'https://onemoment.cc/'
 
 
 SIMPLE_JWT = {

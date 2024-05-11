@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from rest_framework.generics import GenericAPIView
+from django.conf import settings
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
@@ -10,9 +11,9 @@ from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.exceptions import ValidationError
 import random
 from .models import User
-
 from .serializers import UserSerializer, UserLoginSerializer, ResetPasswordSerializer, ResetPasswordVerifySerializer
 
 
@@ -24,17 +25,15 @@ class RegistrationAPIView(generics.CreateAPIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
-            confirm_password = serializer.validated_data.get("confirm_password")
+            confirm_password = serializer.validated_data.get('confirm_password')
 
             if password != confirm_password:
-                raise serializer.ValidationError("Пароли не совпадают!")
-
-            if User.objects.filter(email=email).exists():
-                return Response({'error': 'Электронный адрес уже существует'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Пароли не совпадают'}, status=status.HTTP_400_BAD_REQUEST)
 
             try:
                 user = serializer.save()
 
+                # Добавлен код для отправки электронной почты только после успешного сохранения пользователя
                 subject = 'Активация аккаунта'
                 message = f'Здравствуйте, {email}!\n\nПоздравляем Вас с успешной регистрацией на сайте {settings.BASE_URL}\n\nВаш пароль: {password}\n\n  {settings.BASE_URL} Активация аккаунта \n\nС наилучшими пожеланиями,\nКоманда {settings.BASE_URL}\n\nДля активации вашего аккаунта перейдите по ссылке: {settings.BASE_URL}'
                 from_email = settings.EMAIL_HOST_USER
@@ -42,8 +41,7 @@ class RegistrationAPIView(generics.CreateAPIView):
 
                 send_mail(subject, message, from_email, recipient_list)
 
-                authenticated_user = authenticate(request, email=email, password=password)
-                login(request, authenticated_user)
+                login(request, user)
 
                 return Response({'response': True,
                                  'message': 'Пользователь успешно зарегистрирован. Проверьте вашу электронную почту для получения инструкций по активации.',
@@ -53,8 +51,9 @@ class RegistrationAPIView(generics.CreateAPIView):
                 return Response({'error': 'Произошла ошибка при регистрации пользователя'},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
-            return Response({'response': False, 'message': 'Ошибка при регистрации пользователя'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            # Обработка ошибки валидации сериализатора
+            raise ValidationError(serializer.errors)
+
 
 class UserLoginView(generics.CreateAPIView):
     serializer_class = UserLoginSerializer
@@ -102,7 +101,6 @@ class ResetPasswordView(GenericAPIView):
                     </body>
                     </html>
                 '''.format(email))
-
 
                 send_mail(
                     _('Восстановление пароля'),
