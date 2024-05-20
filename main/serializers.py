@@ -13,14 +13,20 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         confirm_password = validated_data.pop('confirm_password', None)
         if confirm_password != validated_data['password']:
-            raise serializers.ValidationError("Пароли не совпадают!")
+            raise serializers.ValidationError("Пароли не совпадают")
 
-        return User.objects.create_user(**validated_data)
+        return User.objects.create_user(email=validated_data['email'], password=validated_data['password'])
 
 
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['email']
 
 
 class ResetPasswordSerializer(serializers.Serializer):
@@ -29,16 +35,30 @@ class ResetPasswordSerializer(serializers.Serializer):
         error_messages={"required": "Это поле обязательно."}
     )
 
-    def validate(self, attrs):
-        return super().validate(attrs)
-
 
 class ResetPasswordVerifySerializer(serializers.Serializer):
     new_password = serializers.CharField(
         required=True,
-        error_messages={"required": "Это поле обязательно."}  # Обновлено сообщение об ошибке на русский
+        min_length=8,
+        error_messages={
+            "required": "Это поле обязательно.",
+            "min_length": "Пароль должен содержать минимум 8 символов."
+        }
     )
-    email = serializers.CharField(
+    confirm_password = serializers.CharField(
         required=True,
-        error_messages={"required": "Это поле обязательно."}  # Обновлено сообщение об ошибке на русский
+        error_messages={"required": "Это поле обязательно."}
     )
+
+    def validate(self, data):
+        new_password = data.get('new_password')
+        confirm_password = data.get('confirm_password')
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError("Пароли не совпадают.")
+
+        return data
+
+
+class LogoutSerializer(serializers.Serializer):
+    pass
